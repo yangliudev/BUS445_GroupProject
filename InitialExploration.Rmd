@@ -1,0 +1,107 @@
+---
+title: "BUS445"
+output: html_document
+date: "2024-11-07"
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+```
+
+```{r}
+data=read.csv("hotel_bookings.csv")
+#Checking for missing values (NA). Observed 4 missing values in the children column.
+data[rowSums(is.na(data))>0,]
+```
+```{r}
+#Removing these 4 instances as there is a lot of observations
+data=na.omit(data)
+```
+
+Contingency table of all the columns
+```{r}
+lapply(data,table)
+```
+It's observed that there are NULL values in the data. The columns with NULL values are company, agent, and country.  
+```{r}
+colSums(data=="NULL")
+```
+The contigency table for the company feature. 
+```{r}
+table(data$company)
+```
+It is observed that the most common element is the NULL value with 112589 observations which is much more than 50% of the data.
+This is most likely due to a majority of the hotel bookings not be associated with a company booking. As a result, this implys that 
+the NULL values are important so they will be renamed to "No Company"
+```{r}
+data=data%>%mutate(company=ifelse(company=="NULL","No Company",company))
+```
+The agent feature has 16338 NULL values. As the agent number is related to the distribution channel of the booking, we will investigate the distribution channel.
+```{r}
+table(data$agent)
+```
+
+```{r}
+agentNullData=data%>% filter(agent=="NULL")
+table(agentNullData$agent,agentNullData$distribution_channel)
+```
+
+Of the 16338 NULL values in the agent field, 13168 (5543+7625) of them belong to the corporate and direct distribution channels which have no agents as they directly contact the hotel for the booking. We will fill these with "No Travel Agency" as they don't use any travel agency. There is 3167 NULL values with TA/TO distribution channels. We will fill in these with "TA/TO No Agent Number" as they have travel agents but have no agent id. The remaining 3 NULL values will be removed as they are only 3 of them.
+
+```{r}
+data=data%>%mutate(agent=ifelse(distribution_channel %in% c("Corporate","Direct") & agent=='NULL','No Travel Agency',agent))
+data=data%>%mutate(agent=ifelse(distribution_channel=="TA/TO" & agent=="NULL","TA/TO No Agent Number",agent))
+data=data%>%filter(agent!="NULL")
+```
+
+Looking at the Contingency table of the country column we see that there is 488 NULL values.
+```{r}
+table(data$country)
+```
+
+```{r}
+countryNulldata=data%>% filter(country=="NULL")
+x=table(countryNulldata$country,countryNulldata$agent)
+x["NULL",]
+```
+It is observed that majority of the observations with NULL for countries also had no agents which are now "No Travel Agency" and "TA/TO No Agent Number". We will fill these with countires with "Unknown". For all the other NULL countries, we will remove them as there is a small amount of them.
+
+```{r}
+data=data%>%mutate(country=ifelse(agent %in% c("No Travel Agency","TA/TO No Agent Number") & country=='NULL','Unknown',country))
+data=data%>%filter(data$country!="NULL")
+```
+
+
+```{r}
+lapply(data,table)
+```
+
+It is observed that there is 1168 undefined columns in the meal feature. As the other options are BB (Bed and Breakfast), FB(Full Board), HB(Half Board), and SC (Self Catering) it is observed that there is no option for no meal services. As a result, we will fill these undefined values with "Other"
+
+```{r}
+data=data%>%mutate(meal=ifelse(meal=='Undefined','Other',meal))
+table(data$meal)
+```
+
+```{r}
+head(data)
+write.csv(data,"data.csv",row.names = FALSE)
+```
+```{r}
+data=read.csv("data.csv",stringsAsFactors = TRUE)
+head(data)
+file.remove("data.csv")
+```
+
+```{r}
+library(corrplot)
+numericData=data[sapply(data,is.numeric)]
+corr=cor(numericData)
+corrplot(corr,method="color")
+```
+As their isn't any highly correlated columns, no columns will be removed.
+
+
+
+
+
