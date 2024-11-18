@@ -1,0 +1,122 @@
+
+```{r}
+library(tidyverse)
+data=read.csv("data.csv",stringsAsFactors = TRUE)
+data$is_canceled=as.factor(data$is_canceled)
+```
+
+```{r}
+#Hotel Bookings Cancellation vs Non Cancellation Count
+ggplot(data=data,mapping=aes(x=is_canceled,fill=is_canceled))+geom_bar()+ggtitle("Hotel Bookings: Canceled vs Not Canceled")+ylab("Count")+
+  scale_x_discrete(labels = c("0" = "Not Canceled", "1" = "Canceled"))+xlab("Cancellation")+
+  scale_fill_manual(values = c("0" = "#002845", "1" = "#841F27"),labels=c("Not Canceled","Canceled")) +
+  guides(fill=guide_legend(title="Cancellation Status"))+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
+```
+
+```{r}
+#Historical Cancellation Status by Market Segment
+ggplot(data,mapping=aes(x=market_segment,fill=is_canceled))+geom_bar(position="dodge")+ ggtitle("Historical Cancellation Status by Market Segment") + xlab("Market Segment")+ ylab("Count") +
+  scale_fill_manual(values = c("0" = "#002845", "1" = "#841F27"),labels=c("Not Canceled","Canceled")) +
+  guides(fill=guide_legend(title="Cancellation Status"))+ theme(plot.background = element_rect(fill = "#002845"),axis.text.x = element_text(angle = 45, hjust = 1),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
+```
+
+```{r}
+
+#Historical Cancellation Status by Deposit_type
+ggplot(data,mapping=aes(x=deposit_type,fill=is_canceled))+geom_bar(position="dodge")+ ggtitle("Historical Cancellation Status by Deposit Type") + xlab("Deposit Type")+ ylab("Count") +
+  scale_fill_manual(values = c("0" = "#002845", "1" = "#841F27"),labels=c("Not Canceled","Canceled")) +
+  guides(fill=guide_legend(title="Cancellation Status"))+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
+```
+
+
+
+```{r}
+#Historical Cancellation Status by Lead Time Bins.
+data$lead_timeCategories=factor(data$lead_timeCategories,levels=c("Very Low Lead Time","Below Average Lead Time","Above Average Lead Time","High Lead Time"))
+ggplot(data,mapping=aes(x=lead_timeCategories,fill=is_canceled))+geom_bar(position="dodge")+ ggtitle("Historical Cancellation Status by Lead Time Bins") + xlab("Lead Time Bins")+ ylab("Count") +
+  scale_fill_manual(values = c("0" = "#002845", "1" = "#841F27"),labels=c("Not Canceled","Canceled")) +
+  guides(fill=guide_legend(title="Cancellation Status"))+ theme(axis.text.x = element_text(angle = 45, hjust = 1),plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
+```
+
+```{r}
+ggplot(data=data,mapping=aes(x=required_car_parking_spaces,fill=is_canceled))+geom_bar(position="dodge")+ xlab("Required Parking Spaces")+ ylab("Count") +
+labs(fill = "Cancellation Status")+ ggtitle("Cancelation Status by Required Parking Spaces")+
+  scale_fill_manual(values = c("0" = "#002845", "1" = "#841F27"),labels=c("Not Canceled","Canceled")) +
+  guides(fill=guide_legend(title="Cancellation Status"))+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white")) +coord_cartesian(xlim=c(-0.5,2))
+```
+
+
+```{r}
+
+ggplot(data=data,mapping=aes(x=assigned_room_type,fill=is_canceled))+geom_bar(position="dodge")+ xlab("Room Type")+ ylab("Count") + ggtitle("Cancelation Status by Room Type")+
+  scale_fill_manual(values = c("0" = "#002845", "1" = "#841F27"),labels=c("Not Canceled","Canceled")) +
+  guides(fill=guide_legend(title="Cancellation Status"))+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
+```
+
+
+
+```{r}
+company204=data[data$company==204,]
+ggplot(data=company204,mapping=aes(x=company,fill=is_canceled))+geom_bar(position="dodge")+ xlab("Company")+ ylab("Count") + ggtitle("Cancelation Status of Company 204")+
+  scale_fill_manual(values = c("0" = "#002845", "1" = "#841F27"),labels=c("Not Canceled","Canceled")) +
+  guides(fill=guide_legend(title="Cancellation Status"))+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
+```
+
+```{r}
+company321=data[data$company==321,]
+ggplot(data=company321,mapping=aes(x=company,fill=is_canceled))+geom_bar(position="dodge")+ xlab("Company")+ ylab("Count") + ggtitle("Cancellation Status of Company 321")+
+  scale_fill_manual(values = c("0" = "#002845", "1" = "#841F27"),labels=c("Not Canceled","Canceled")) +
+  guides(fill=guide_legend(title="Cancellation Status"))+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
+
+```
+
+```{r}
+roomtypeI=data[data$assigned_room_type=="I",]
+ggplot(data=roomtypeI,mapping=aes(x=assigned_room_type,fill=is_canceled))+geom_bar(position="dodge")+ xlab("Room Type")+ ylab("Count") + ggtitle("Cancellation Status of Room Type I")+
+  scale_fill_manual(values = c("0" = "#002845", "1" = "#841F27"),labels=c("Not Canceled","Canceled")) +
+  guides(fill=guide_legend(title="Cancellation Status"))+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
+
+```
+
+```{r}
+ggplot(data=data,mapping=aes(x=previous_cancellations,fill=is_canceled))+geom_bar(position="dodge")+ xlab("Previous Cancellations")+ ylab("Count")+ ggtitle("Cancellation Status by Number of Previous Cancellations")+
+  scale_fill_manual(values = c("0" = "#002845", "1" = "#841F27"),labels=c("Not Canceled","Canceled")) +
+  guides(fill=guide_legend(title="Cancellation Status"))+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))+coord_cartesian(xlim=c(-0.5,2))
+```
+
+```{r}
+ggplot(data=data,mapping=aes(x=total_of_special_requests,fill=is_canceled))+geom_bar(position="dodge")+ xlab("Total of Special Requests")+ ylab("Count") +
+  scale_fill_manual(values = c("0" = "#002845", "1" = "#841F27"),labels=c("Not Canceled","Canceled")) +ggtitle("Cancellations by Total of Special Requests")+
+  guides(fill=guide_legend(title="Cancellation Status"))+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))+coord_cartesian(xlim=c(-0.25,4))
+```
+
+```{r}
+ggplot(data=data,mapping=aes(x=meal,fill=is_canceled))+geom_bar(position="dodge")+ xlab("Meal")+ ylab("Count") +
+labs(fill = "Cancellation Status")+ggtitle("Cancellation Status by Meal Type")+
+  scale_fill_manual(values = c("0" = "#002845", "1" = "#841F27"),labels=c("Not Canceled","Canceled")) +
+  guides(fill=guide_legend(title="Cancellation Status"))+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
+```
+
+```{r}
+ggplot(data=data,mapping=aes(x=customer_type,fill=is_canceled))+geom_bar(position="dodge")+ xlab("Customer Type")+ ylab("Count") + ggtitle("Cancellation Status by Customer Type")+
+  scale_fill_manual(values = c("0" = "#002845", "1" = "#841F27"),labels=c("Not Canceled","Canceled")) +
+  guides(fill=guide_legend(title="Cancellation Status"))+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
+```
+```{r}
+country=data%>%group_by(country)%>%summarize(total=n(),cancellation_rate=sum(is_canceled==1)/total,`Not Canceled`=sum(is_canceled==0),`Canceled` =sum(is_canceled==1))%>%filter(total > 500)%>%arrange(desc(cancellation_rate))%>%head(10)
+
+ggplot(country, aes(x = reorder(country, -cancellation_rate), y = cancellation_rate)) +
+  geom_col(fill = "#841F27") +
+    ggtitle("Top 10 Countries by Cancellation Rate")+
+    xlab("Country")+
+    ylab("Cancellation Rate")+
+  scale_y_continuous(labels = scales::percent,limits = c(0, 1)) + # Show y-axis as percentages
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
+```
+
+
+
+
+
+

@@ -166,12 +166,22 @@ data=subset(data,select=-reservation_status) #Dropping variables that are observ
 data=subset(data,select=-reservation_status_date)
 
 data=subset(data,select=-arrival_date_week_number)#Dropping arrival week number as I used it to create the Seasonal columns
+data=data%>%mutate(roomTypeAsAsked=ifelse(as.character(reserved_room_type)==as.character(assigned_room_type),1,0))
+data$roomTypeAsAsked=as.factor(data$roomTypeAsAsked)
+#Writing out csv for plots
+write.csv(data,"data.csv",row.names = FALSE) 
+data=read.csv("data.csv",stringsAsFactors = TRUE)
+data$is_canceled=as.factor(data$is_canceled)
+#file.remove("data.csv") 
 ```
 
 # Splitting the data for ML
 ```{r}
 data$is_canceled=as.factor(data$is_canceled)
 data$Continent=as.factor(data$Continent)
+```
+
+```{r}
 partition=createDataPartition(data$is_canceled,p=0.75,list=FALSE)
 data_train=data[partition,]
 data_test=data[-partition,]
@@ -200,7 +210,7 @@ Top5RfImportance
 
 Variable Importance Plot
 ```{r}
-ggplot(data=Top5RfImportance,mapping=aes(x=Overall,y= reorder(Feature, Overall)))+geom_bar(stat="identity",fill="blue")+scale_y_discrete(labels=c("Previous Cancellations","Total of Special Requests","Lead Time","Country: Portugal","Non Refundable Deposit"))+xlab("Importance")+ylab("Variables")+ggtitle("Most Important Variables from the Random Forest Model")
+ggplot(data=Top5RfImportance,mapping=aes(x=Overall,y= reorder(Feature, Overall)))+geom_bar(stat="identity",fill="#002845")+scale_y_discrete(labels=c("Previous Cancellations","Total of Special Requests","Lead Time","Country: Portugal","Non Refundable Deposit"))+xlab("Importance")+ylab("Variables")+ggtitle("Most Important Variables from the Random Forest Model")+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
 ```
 
 Confusion Matrixs
