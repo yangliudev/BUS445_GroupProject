@@ -1,0 +1,332 @@
+Did a simple train test split of 75%/25% for faster computation. Abandoned the CV file from before. Still takes a while to run (5-10 min).
+
+In terms of accuracy Random forest > Logistic Regression > Decision Tree > Neural Network on Variables from Trees > Neural Network on Variables from Logisitic Regression.
+
+Important variables are Deposit Type, Country, Lead Time, Total of Special Requests, Previous Cancellations in the random forest model.
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(nnet)
+library(rpart.plot)
+library(tibble)
+library(rpart)
+library(caret)
+library(corrplot)
+library(countrycode)
+library(ranger)
+```
+
+# Exploration of Missing Values
+```{r}
+set.seed(123)
+data=read.csv("hotel_bookings.csv")
+originalData=data
+#Checking for missing values (NA). Observed 4 missing values in the children column.
+data[rowSums(is.na(data))>0,]
+```
+```{r}
+#Removing these 4 instances as there is a lot of observations
+data=na.omit(data)
+```
+
+Contingency table of all the columns
+```{r}
+#lapply(data,table) Commented out as it's too big of a print.
+```
+It's observed that there are NULL values in the data. The columns with NULL values are company, agent, and country.  
+```{r}
+colSums(data=="NULL")
+```
+The contigency table for the company feature. 
+```{r}
+#table(data$company) Commented out as it's too big of a print.
+```
+It is observed that the most common element is the NULL value with 112589 observations which is much more than 50% of the data.
+This is most likely due to a majority of the hotel bookings not be associated with a company booking. As a result, this implys that 
+the NULL values are important so they will be renamed to "No Company"
+```{r}
+data=data%>%mutate(company=ifelse(company=="NULL","No Company",company))
+```
+The agent feature has 16338 NULL values. As the agent number is related to the distribution channel of the booking, we will investigate the distribution channel.
+```{r}
+#table(data$agent) Commented out as it's too big of a print.
+```
+
+```{r}
+agentNullData=data%>% filter(agent=="NULL")
+#table(agentNullData$agent,agentNullData$distribution_channel) Commented out as it's too big of a print.
+```
+
+Of the 16338 NULL values in the agent field, 13168 (5543+7625) of them belong to the corporate and direct distribution channels which have no agents as they directly contact the hotel for the booking. We will fill these with "No Travel Agency" as they don't use any travel agency. There is 3167 NULL values with TA/TO distribution channels. We will fill in these with "TA/TO No Agent Number" as they have travel agents but have no agent id. The remaining 3 NULL values will be removed as they are only 3 of them.
+
+```{r}
+data=data%>%mutate(agent=ifelse(distribution_channel %in% c("Corporate","Direct") & agent=='NULL','No Travel Agency',agent))
+data=data%>%mutate(agent=ifelse(distribution_channel=="TA/TO" & agent=="NULL","TA/TO No Agent Number",agent))
+data=data%>%filter(agent!="NULL")
+```
+
+Looking at the Contingency table of the country column we see that there is 488 NULL values.
+```{r}
+#table(data$country) Commented out as it's too big of a print.
+```
+
+```{r}
+countryNulldata=data%>% filter(country=="NULL")
+x=table(countryNulldata$country,countryNulldata$agent)
+#x["NULL",] Commented out as it's too big of a print.
+```
+It is observed that majority of the observations with NULL for countries also had no agents which are now "No Travel Agency" and "TA/TO No Agent Number". We will fill these with countries with "Unknown". For all the other NULL countries, we will remove them as there is a small amount of them.
+
+```{r}
+data=data%>%mutate(country=ifelse(agent %in% c("No Travel Agency","TA/TO No Agent Number") & country=='NULL','Unknown',country))
+data=data%>%filter(data$country!="NULL")
+```
+
+
+```{r}
+#lapply(data,table)
+```
+
+It is observed that there is 1168 undefined columns in the meal feature. As the other options are BB (Bed and Breakfast), FB(Full Board), HB(Half Board), and SC (Self Catering) it is observed that there is no option for no meal services. As a result, we will fill these undefined values with "Other"
+
+```{r}
+data=data%>%mutate(meal=ifelse(meal=='Undefined','Other',meal))
+table(data$meal)
+```
+
+```{r}
+head(data)
+write.csv(data,"data.csv",row.names = FALSE) # Writing out for easier factor conversion
+```
+```{r}
+data=read.csv("data.csv",stringsAsFactors = TRUE)
+data$is_canceled=as.factor(data$is_canceled)
+file.remove("data.csv") 
+```
+# Correlation Exploration 
+```{r}
+library(corrplot)
+numericData=data[sapply(data,is.numeric)]
+corr=cor(numericData)
+corrplot(corr,method="color")
+```
+As their isn't any highly correlated columns, no columns will be removed.
+
+
+# Creating New Features
+
+Binning the lead time into quartiles
+```{r}
+
+q1LeadTime=quantile(data$lead_time,0.25)
+q2LeadTime=quantile(data$lead_time,0.50)
+q3LeadTime=quantile(data$lead_time,0.75)
+data$lead_timeCategories=cut(data$lead_time,breaks=c(-Inf,q1LeadTime,q2LeadTime,q3LeadTime,Inf),labels=c("Very Low Lead Time", "Below Average Lead Time", "Above Average Lead Time", "High Lead Time"))
+```
+
+Making a continent Column
+```{r}
+data$Continent=countrycode(data$country, origin = "iso3c", destination = "continent")
+southAmerica=c("ARG", "BRA", "CHL", "PER", "COL", "VEN", "SUR", "ECU", "GUY", "PRY", "BOL", "GUY")
+
+#Manually fixing continent values that the country code couldn't define
+
+#South America is linked together as Americas with North America
+data$Continent=ifelse(data$country %in% southAmerica & data$Continent == "Americas","South America",data$Continent) 
+data$Continent=ifelse(data$country == "ATF", "None",data$Continent)  #French South Territories isn't associated with a continent
+data$Continent=ifelse(data$country == "CN","Asia",data$Continent) #China
+data$Continent=ifelse(data$country == "TMP","Asia",data$Continent) #East Timor, part of ASIA
+data$Continent=ifelse(data$country == "UMI","None",data$Continent) #United States Minor Outlying Islands isn't associated with a continent
+data$Continent=ifelse(data$country == "Unknown","Unknown",data$Continent) 
+```
+
+Making a holiday seasons column (Summer, Chirstmas, New years)
+```{r}
+data$ArrivalHolidaySeason=cut(data$arrival_date_week_number,breaks=c(-Inf,1,20,26,47,51,Inf),labels=c("New Year","Regular","Summer","Regular","Chirstmas","New Year"))
+```
+
+Making a seasonal column
+```{r}
+data=data%>%mutate(ArrivalSeason=case_when(
+    arrival_date_month %in% c("December", "January", "February") ~ "Winter",
+    arrival_date_month %in% c("March", "April", "May") ~ "Spring",
+    arrival_date_month %in% c("June", "July", "August") ~ "Summer",
+    arrival_date_month %in% c("September", "October", "November") ~ "Fall")
+  )
+data$ArrivalSeason=as.factor(data$ArrivalSeason)
+```
+
+
+
+
+```{r}
+originalData=data#Before removing columns stored original with features engineered for later use.
+
+data=subset(data,select=-reservation_status) #Dropping variables that are observed after a hotel booking is finalized (Canceled, No Show, etc)
+data=subset(data,select=-reservation_status_date)
+
+data=subset(data,select=-arrival_date_week_number)#Dropping arrival week number as I used it to create the Seasonal columns
+```
+
+# Splitting the data for ML
+```{r}
+data$is_canceled=as.factor(data$is_canceled)
+data$Continent=as.factor(data$Continent)
+partition=createDataPartition(data$is_canceled,p=0.75,list=FALSE)
+data_train=data[partition,]
+data_test=data[-partition,]
+```
+
+
+# Train test split 
+
+## Random Forest
+```{r}
+rg=train(is_canceled~.,data=data_train,method="ranger",importance = "impurity",num.trees=1000,trControl = trainControl(method = "none"))
+```
+
+
+```{r}
+rgPreds=predict(rg,newdata=data_test)
+```
+
+Variable Importance
+```{r}
+rfImportance=varImp(rg)
+Top5RfImportance=rfImportance$importance%>%as.data.frame()%>%rownames_to_column("Feature") %>% arrange(desc(Overall))%>%head(5)
+Top5RfImportance
+#Found Deposit type:Non refundable, country:Portugal, lead_time, total of special requests, and previous_cancellations important
+```
+
+Variable Importance Plot
+```{r}
+ggplot(data=Top5RfImportance,mapping=aes(x=Overall,y= reorder(Feature, Overall)))+geom_bar(stat="identity",fill="blue")+scale_y_discrete(labels=c("Previous Cancellations","Total of Special Requests","Lead Time","Country: Portugal","Non Refundable Deposit"))+xlab("Importance")+ylab("Variables")+ggtitle("Most Important Variables from the Random Forest Model")
+```
+
+Confusion Matrixs
+```{r}
+table(rgPreds,data_test$is_canceled)
+```
+Accuracy
+```{r}
+(rfAccuracy=mean(rgPreds==data_test$is_canceled))
+```
+## Decision Tree
+```{r}
+tree=rpart(is_canceled~.,data=data_train, method = "class")
+```
+Accuracy
+```{r}
+treePreds=predict(tree,newdata=data_test,type="class")
+(treeAccuracy=mean(treePreds==data_test$is_canceled))
+```
+Confusion Matrix
+```{r}
+table(treePreds,data_test$is_canceled)
+```
+Variable Importance
+```{r}
+tree_Imp=as.data.frame(tree$variable.importance)
+
+tree_Imp=tree_Imp%>%rownames_to_column()
+names(tree_Imp)=c("Variable","Importance")
+
+tree_Imp=tree_Imp%>%arrange(desc(Importance))%>%head(5)
+tree_Imp#Important vars are deposit type, agent, market segment, total of special requests and country.
+```
+
+
+# Logistic Regression
+```{r}
+lg=train(is_canceled~.,data=data_train,trControl=trainControl(method="none"),method="multinom",trace=FALSE)
+
+```
+
+Accuracy
+```{r}
+lgPreds=predict(lg,newdata=data_test)
+(lgAccuracy=mean(lgPreds==data_test$is_canceled))
+```
+Confusion Matrix
+```{r}
+table(lgPreds,data_test$is_canceled)
+```
+
+Variable Importance
+```{r}
+lgImportance=varImp(lg)
+Top5lgImportance=lgImportance$importance%>%as.data.frame()%>%rownames_to_column("Feature") %>% arrange(desc(Overall))%>%head(5)
+Top5lgImportance
+#Found Deposit type:Agent 252, Company 321, Agent 341, Agent 276, Company 204 important
+```
+
+Variable Importance Plot
+```{r}
+ggplot(data=Top5RfImportance,mapping=aes(x=Overall,y= reorder(Feature, Overall)))+geom_bar(stat="identity",fill="blue")+scale_y_discrete(labels=c("Company 204","Agent 276","Company 341","Company 321","Agent 252"))+xlab("Importance")+ylab("Variables")+ggtitle("Most Important Variables from the Logsitic Regression Model")
+```
+# Neural Net using variables from tree methods
+```{r}
+nn_trainControl=trainControl(method="none")
+nn_tuneGrid=expand.grid(size=1, decay = 0.01)
+nnModel=train(is_canceled~lead_time+deposit_type+country+total_of_special_requests+previous_cancellations+agent+market_segment,data=data_train,method="nnet",trControl=nn_trainControl,tuneGrid=nn_tuneGrid, trace = FALSE)
+nnPreds=predict(nnModel,newdata=data_test)
+```
+
+Confusion Matrix
+```{r}
+table(nnPreds,data_test$is_canceled)
+```
+
+Accuracy
+```{r}
+(nnaccuracy=mean(nnPreds==data_test$is_canceled))
+```
+Important variables
+```{r}
+nnImportance=varImp(nnModel)
+Top5nnImportance=nnImportance$importance%>%as.data.frame()%>%rownames_to_column("Feature") %>% arrange(desc(Overall))%>%head(5)
+Top5nnImportance
+#Found deposit_typeNon Refund, market segment Complementary, agent 253, agent 94, and agent 281 important
+```
+
+Important Variables Plot
+```{r}
+ggplot(data=Top5nnImportance,mapping=aes(x=Overall,y= reorder(Feature, Overall)))+geom_bar(stat="identity",fill="blue")+scale_y_discrete(labels=c("Agent 281","Agent 94","Agent 253","Market Segment: Complementary","Deposit Type: No Refund"))+xlab("Importance")+ylab("Variables")+ggtitle("Important Vars from NN on the Important Vars from Trees")
+```
+# Neural Net using variables from Logistic Regression
+```{r}
+NN_trainControl=trainControl(method="none")
+NN_tuneGrid=expand.grid(size=1, decay = 0.1)
+NNModel=train(is_canceled~company+agent,data=data_train,method="nnet",trControl=NN_trainControl,tuneGrid=NN_tuneGrid, trace = FALSE)
+NNPreds=predict(NNModel,newdata=data_test)
+```
+Confusion Matrix
+```{r}
+table(NNPreds,data_test$is_canceled)
+```
+Accuracy
+```{r}
+(NNAccuracy=mean(NNPreds==data_test$is_canceled))
+```
+Important variables
+```{r}
+NNImportance=varImp(NNModel)
+Top5NNImportance=NNImportance$importance%>%as.data.frame()%>%rownames_to_column("Feature") %>% arrange(desc(Overall))%>%head(5)
+Top5NNImportance
+#Found agent 243, agent 40, company 348, agent 28 and agent 14 important
+```
+Important Variables Plot
+```{r}
+ggplot(data=Top5nnImportance,mapping=aes(x=Overall,y= reorder(Feature, Overall)))+geom_bar(stat="identity",fill="blue")+scale_y_discrete(labels=c("Agent 14","Agent 28","Company 348","Agent 40","Agent 243"))+xlab("Importance")+ylab("Variables")+ggtitle("Important Vars from NN on the Important Vars from Logistic Regression")
+```
+```{r}
+accuracy=as.data.frame(rbind(rfAccuracy,treeAccuracy,lgAccuracy,nnaccuracy))
+
+accuracy=accuracy%>%rownames_to_column()
+names(accuracy) = c("Model", "Accuracy")
+accuracy=accuracy[order(-accuracy$Accuracy),]
+accuracy
+```
+```{r}
+ggplot(data=accuracy,mapping=aes(x=reorder(Model,-Accuracy),y=Accuracy))+geom_bar(stat="identity",fill="blue")+scale_x_discrete(labels=c("rfAccuracy"="Random Forest","lgAccuracy"="Logistic Regression","treeAccuracy"="Decision Tree","nnaccuracy"="Neural Net"))+ggtitle("Accuracy of Machine Learning Models on Predicting Hotel Cancellations")+xlab("Models")+ylab("Accuracy")
+```
