@@ -119,7 +119,10 @@ Binning the lead time into quartiles
 ```{r}
 
 q1LeadTime=quantile(data$lead_time,0.25)
+q1LeadTime
+q2LeadTime
 q2LeadTime=quantile(data$lead_time,0.50)
+q3LeadTime
 q3LeadTime=quantile(data$lead_time,0.75)
 data$lead_timeCategories=cut(data$lead_time,breaks=c(-Inf,q1LeadTime,q2LeadTime,q3LeadTime,Inf),labels=c("Very Low Lead Time", "Below Average Lead Time", "Above Average Lead Time", "High Lead Time"))
 ```
@@ -173,18 +176,24 @@ write.csv(data,"data.csv",row.names = FALSE)
 data=read.csv("data.csv",stringsAsFactors = TRUE)
 data$is_canceled=as.factor(data$is_canceled)
 #file.remove("data.csv") 
+
+data=subset(data,select=-country)
+data=subset(data,select=-Continent)
 ```
 
 # Splitting the data for ML
 ```{r}
 data$is_canceled=as.factor(data$is_canceled)
-data$Continent=as.factor(data$Continent)
+#data$Continent=as.factor(data$Continent)
+
 ```
 
 ```{r}
 partition=createDataPartition(data$is_canceled,p=0.75,list=FALSE)
 data_train=data[partition,]
 data_test=data[-partition,]
+n=length(data_test$is_canceled)
+z=1.96
 ```
 
 
@@ -210,7 +219,7 @@ Top5RfImportance
 
 Variable Importance Plot
 ```{r}
-ggplot(data=Top5RfImportance,mapping=aes(x=Overall,y= reorder(Feature, Overall)))+geom_bar(stat="identity",fill="#002845")+scale_y_discrete(labels=c("Previous Cancellations","Total of Special Requests","Lead Time","Country: Portugal","Non Refundable Deposit"))+xlab("Importance")+ylab("Variables")+ggtitle("Most Important Variables from the Random Forest Model")+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
+ggplot(data=Top5RfImportance,mapping=aes(x=Overall,y= reorder(Feature, Overall)))+geom_bar(stat="identity",fill="#002845")+scale_y_discrete(labels=c("Amount of Previous Cancellations","Amount of Special Requests","Lead Time","Origin Country: Portugal","Non Refundable Deposit"))+xlab("Importance")+ylab("Variables")+ggtitle("Most Important Variables from the Random Forest Model")+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
 ```
 
 Confusion Matrixs
@@ -220,6 +229,9 @@ table(rgPreds,data_test$is_canceled)
 Accuracy
 ```{r}
 (rfAccuracy=mean(rgPreds==data_test$is_canceled))
+rfse=sqrt(rfAccuracy*(1 - rfAccuracy)/n)
+rfLowerbound=rfAccuracy-z*rfse
+rfUpperbound=rfAccuracy+z*rfse
 ```
 ## Decision Tree
 ```{r}
@@ -229,6 +241,9 @@ Accuracy
 ```{r}
 treePreds=predict(tree,newdata=data_test,type="class")
 (treeAccuracy=mean(treePreds==data_test$is_canceled))
+treese=sqrt(treeAccuracy*(1 - treeAccuracy)/n)
+treeLowerbound=treeAccuracy-z*treese
+treeUpperbound=treeAccuracy+z*treese
 ```
 Confusion Matrix
 ```{r}
@@ -256,6 +271,9 @@ Accuracy
 ```{r}
 lgPreds=predict(lg,newdata=data_test)
 (lgAccuracy=mean(lgPreds==data_test$is_canceled))
+lgse=sqrt(lgAccuracy*(1 - lgAccuracy)/n)
+lgLowerbound=lgAccuracy-z*lgse
+lgUpperbound=lgAccuracy+z*lgse
 ```
 Confusion Matrix
 ```{r}
@@ -278,7 +296,7 @@ ggplot(data=Top5RfImportance,mapping=aes(x=Overall,y= reorder(Feature, Overall))
 ```{r}
 nn_trainControl=trainControl(method="none")
 nn_tuneGrid=expand.grid(size=1, decay = 0.01)
-nnModel=train(is_canceled~lead_time+deposit_type+country+total_of_special_requests+previous_cancellations+agent+market_segment,data=data_train,method="nnet",trControl=nn_trainControl,tuneGrid=nn_tuneGrid, trace = FALSE)
+nnModel=train(is_canceled~lead_time+deposit_type+total_of_special_requests+previous_cancellations+agent+market_segment,data=data_train,method="nnet",trControl=nn_trainControl,tuneGrid=nn_tuneGrid, trace = FALSE)
 nnPreds=predict(nnModel,newdata=data_test)
 ```
 
@@ -290,6 +308,9 @@ table(nnPreds,data_test$is_canceled)
 Accuracy
 ```{r}
 (nnaccuracy=mean(nnPreds==data_test$is_canceled))
+nnse=sqrt(nnaccuracy*(1 - nnaccuracy)/n)
+nnLowerbound=nnaccuracy-z*nnse
+nnUpperbound=nnaccuracy+z*nnse
 ```
 Important variables
 ```{r}
@@ -317,6 +338,11 @@ table(NNPreds,data_test$is_canceled)
 Accuracy
 ```{r}
 (NNAccuracy=mean(NNPreds==data_test$is_canceled))
+NNse=sqrt(NNAccuracy*(1 - NNAccuracy)/n)
+NNLowerbound=NNAccuracy-z*NNse
+NNUpperbound=NNAccuracy+z*NNse
+
+
 ```
 Important variables
 ```{r}
@@ -331,12 +357,40 @@ ggplot(data=Top5nnImportance,mapping=aes(x=Overall,y= reorder(Feature, Overall))
 ```
 ```{r}
 accuracy=as.data.frame(rbind(rfAccuracy,treeAccuracy,lgAccuracy,nnaccuracy))
+upperbound=as.data.frame(rbind(rfUpperbound,treeUpperbound,lgUpperbound,nnUpperbound))
+lowerbound=as.data.frame(rbind(rfLowerbound,treeLowerbound,lgLowerbound,nnLowerbound))
+accuracy=cbind(accuracy,upperbound,lowerbound)
+#accuracy
+names(accuracy) = c("Accuracy","Upper Bound","Lower Bound")
+```
 
+
+```{r}
 accuracy=accuracy%>%rownames_to_column()
-names(accuracy) = c("Model", "Accuracy")
+accuracy
+```
+
+
+```{r}
+names(accuracy) = c("Model", "Accuracy","Upper Bound","Lower Bound")
 accuracy=accuracy[order(-accuracy$Accuracy),]
 accuracy
 ```
 ```{r}
-ggplot(data=accuracy,mapping=aes(x=reorder(Model,-Accuracy),y=Accuracy))+geom_bar(stat="identity",fill="blue")+scale_x_discrete(labels=c("rfAccuracy"="Random Forest","lgAccuracy"="Logistic Regression","treeAccuracy"="Decision Tree","nnaccuracy"="Neural Net"))+ggtitle("Accuracy of Machine Learning Models on Predicting Hotel Cancellations")+xlab("Models")+ylab("Accuracy")
+ggplot(data=accuracy,mapping=aes(x=reorder(Model,-Accuracy),y=Accuracy))+geom_bar(stat="identity",fill="#002845")+
+  geom_errorbar(aes(ymin = `Lower Bound`, ymax = `Upper Bound`), width = 0.2,col="#fc723f")+scale_x_discrete(labels=c("rfAccuracy"="Random Forest","lgAccuracy"="Logistic Regression","treeAccuracy"="Decision Tree","nnaccuracy"="Neural Net"))+ggtitle("Accuracy of Machine Learning Models on Predicting Hotel Cancellations")+xlab("Models")+ylab("Accuracy")+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))+coord_cartesian(ylim=c(0,1))
 ```
+
+```{r}
+r=data[data$deposit_type=="No Deposit",]
+sum(r$is_canceled==1)/nrow(r)
+```
+```{r}
+r=data[data$deposit_type=="Non Refund",]
+sum(r$is_canceled==1)/nrow(r)
+```
+
+```{r}
+levels(data$deposit_type)
+```
+

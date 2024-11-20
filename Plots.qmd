@@ -22,18 +22,82 @@ ggplot(data,mapping=aes(x=market_segment,fill=is_canceled))+geom_bar(position="d
 
 ```{r}
 
-#Historical Cancellation Status by Deposit_type
-ggplot(data,mapping=aes(x=deposit_type,fill=is_canceled))+geom_bar(position="dodge")+ ggtitle("Historical Cancellation Status by Deposit Type") + xlab("Deposit Type")+ ylab("Count") +
+data_req= data %>% group_by(deposit_type, is_canceled) %>%
+  summarise(count = n(),.groups = "drop") %>%
+  group_by(deposit_type) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+
+ggplot(data = data_req, mapping = aes(x = deposit_type, y = count, fill = is_canceled)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  xlab("Deposit Type") + 
+  ylab("Count") +
+  labs(fill = "Cancellation Status") +
+  ggtitle("Cancellation Status by Deposit Type") +
+  scale_fill_manual(
+    values = c("0" = "#002845", "1" = "#841F27"),
+    labels = c("Not Canceled", "Canceled")
+  ) +
+  guides(fill = guide_legend(title = "Cancellation Status")) +
+  theme(
+    plot.background = element_rect(fill = "#002845"),
+    axis.text = element_text(color = "white"),
+    axis.title = element_text(color = "white"),
+    plot.title = element_text(face = "bold", color = "white")
+  ) +
+  geom_text(
+    aes(label = paste0(round(percentage), "%"),y = count + 2000),
+    position = position_dodge(width = 0.9),
+    color = "black",
+    size = 3
+  )
+
+#Historical Cancellation Status by Lead Time Bins.
+data$lead_timeCategories=factor(data$lead_timeCategories,levels=c("Very Low Lead Time","Below Average Lead Time","Above Average Lead Time","High Lead Time"))
+ggplot(data,mapping=aes(x=lead_timeCategories,fill=is_canceled))+geom_bar(position="dodge")+ ggtitle("Historical Cancellation Status by Lead Time Bins") + xlab("Lead Time Bins")+ ylab("Count") +
   scale_fill_manual(values = c("0" = "#002845", "1" = "#841F27"),labels=c("Not Canceled","Canceled")) +
-  guides(fill=guide_legend(title="Cancellation Status"))+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
+  guides(fill=guide_legend(title="Cancellation Status"))+ theme(axis.text.x = element_text(angle = 45, hjust = 1),plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
 ```
 
 
 
 ```{r}
+data_req= data %>% group_by(lead_timeCategories, is_canceled) %>%
+  summarise(count = n(),.groups = "drop") %>%
+  group_by(lead_timeCategories) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+
+ggplot(data = data_req, mapping = aes(x = lead_timeCategories, y = count, fill = is_canceled)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  xlab("Lead Time Bins") + 
+  ylab("Count") +
+  labs(fill = "Cancellation Status") +
+  ggtitle("Cancellation Status by Lead Time") +
+  scale_fill_manual(
+    values = c("0" = "#002845", "1" = "#841F27"),
+    labels = c("Not Canceled", "Canceled")
+  ) +
+  guides(fill = guide_legend(title = "Cancellation Status")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.background = element_rect(fill = "#002845"),
+    axis.text = element_text(color = "white"),
+    axis.title = element_text(color = "white"),
+    plot.title = element_text(face = "bold", color = "white")
+  ) +
+  geom_text(
+    aes(label = paste0(round(percentage), "%"),y = count + 1000),
+    position = position_dodge(width = 0.9),
+    color = "black",
+    size = 3
+  )
+```
+
+
+```{r}
 #Historical Cancellation Status by Lead Time Bins.
 data$lead_timeCategories=factor(data$lead_timeCategories,levels=c("Very Low Lead Time","Below Average Lead Time","Above Average Lead Time","High Lead Time"))
-ggplot(data,mapping=aes(x=lead_timeCategories,fill=is_canceled))+geom_bar(position="dodge")+ ggtitle("Historical Cancellation Status by Lead Time Bins") + xlab("Lead Time Bins")+ ylab("Count") +
+ggplot(data,mapping=aes(x=lead_timeCategories,fill=is_canceled))+geom_bar(position="dodge")+ ggtitle("Historical Cancellation Status by Lead Time") + xlab("Lead Time Bins")+ ylab("Count") +
   scale_fill_manual(values = c("0" = "#002845", "1" = "#841F27"),labels=c("Not Canceled","Canceled")) +
   guides(fill=guide_legend(title="Cancellation Status"))+ theme(axis.text.x = element_text(angle = 45, hjust = 1),plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
 ```
@@ -85,9 +149,42 @@ ggplot(data=data,mapping=aes(x=previous_cancellations,fill=is_canceled))+geom_ba
 ```
 
 ```{r}
+data_req= data %>% group_by(total_of_special_requests, is_canceled) %>%
+  summarise(count = n(),.groups = "drop") %>%
+  group_by(total_of_special_requests) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+
+ggplot(data = data_req, mapping = aes(x = total_of_special_requests, y = count, fill = is_canceled)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  xlab("Number of Special Requests") + 
+  ylab("Count") +
+  labs(fill = "Cancellation Status") +
+  ggtitle("Cancellation Status by Amount of Special Requests") +
+  scale_fill_manual(
+    values = c("0" = "#002845", "1" = "#841F27"),
+    labels = c("Not Canceled", "Canceled")
+  ) +
+  guides(fill = guide_legend(title = "Cancellation Status")) +
+  theme(
+    plot.background = element_rect(fill = "#002845"),
+    axis.text = element_text(color = "white"),
+    axis.title = element_text(color = "white"),
+    plot.title = element_text(face = "bold", color = "white")
+  ) +
+  geom_text(
+    aes(label = paste0(round(percentage), "%"),y = count + 1000),
+    position = position_dodge(width = 0.9),
+    color = "black",
+    size = 3
+  )
+```
+
+
+```{r}
 ggplot(data=data,mapping=aes(x=total_of_special_requests,fill=is_canceled))+geom_bar(position="dodge")+ xlab("Total of Special Requests")+ ylab("Count") +
   scale_fill_manual(values = c("0" = "#002845", "1" = "#841F27"),labels=c("Not Canceled","Canceled")) +ggtitle("Cancellations by Total of Special Requests")+
-  guides(fill=guide_legend(title="Cancellation Status"))+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))+coord_cartesian(xlim=c(-0.25,4))
+  guides(fill=guide_legend(title="Cancellation Status"))+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
 ```
 
 ```{r}
@@ -96,6 +193,7 @@ labs(fill = "Cancellation Status")+ggtitle("Cancellation Status by Meal Type")+
   scale_fill_manual(values = c("0" = "#002845", "1" = "#841F27"),labels=c("Not Canceled","Canceled")) +
   guides(fill=guide_legend(title="Cancellation Status"))+ theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
 ```
+
 
 ```{r}
 ggplot(data=data,mapping=aes(x=customer_type,fill=is_canceled))+geom_bar(position="dodge")+ xlab("Customer Type")+ ylab("Count") + ggtitle("Cancellation Status by Customer Type")+
@@ -117,6 +215,54 @@ ggplot(country, aes(x = reorder(country, -cancellation_rate), y = cancellation_r
 
 
 
+```{r}
+agent=data%>%group_by(agent)%>%summarize(total=n(),cancellation_rate=sum(is_canceled==1)/total,`Not Canceled`=sum(is_canceled==0),`Canceled` =sum(is_canceled==1))%>%filter(total >500)%>%arrange(desc(cancellation_rate))%>%head(10)
 
+ggplot(agent, aes(x = reorder(agent, -cancellation_rate), y = cancellation_rate)) +
+  geom_col(fill = "#841F27") +
+    ggtitle("Top 10 Agent by Cancellation Rate")+
+    xlab("Agent")+
+    ylab("Cancellation Rate")+
+  scale_y_continuous(labels = scales::percent,limits = c(0, 1)) +
+ theme_minimal() +  theme(axis.text.x = element_text(angle = 45, hjust = 1))+theme(plot.background = element_rect(fill = "#002845"),axis.text=element_text(color = "white"),axis.title = element_text(color = "white"),plot.title=element_text(face = "bold",color = "white"))
+```
 
+```{r}
+data_summary <- data %>%
+  group_by(meal, is_canceled) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(meal) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+# Create the plot
+library(ggplot2)
+
+ggplot(data = data_summary, 
+       mapping = aes(x = meal, y = count, fill = as.factor(is_canceled))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  xlab("Meal") + 
+  ylab("Count") +
+  labs(fill = "Cancellation Status") +
+  ggtitle("Cancellation Status by Meal Type") +
+  scale_fill_manual(
+    values = c("0" = "#002845", "1" = "#841F27"),
+    labels = c("Not Canceled", "Canceled")
+  ) +
+  guides(fill = guide_legend(title = "Cancellation Status")) +
+  theme(
+    plot.background = element_rect(fill = "#002845"),
+    axis.text = element_text(color = "white"),
+    axis.title = element_text(color = "white"),
+    plot.title = element_text(face = "bold", color = "white")
+  ) +
+  geom_text(
+    aes(
+      label = paste0(round(percentage, 1), "%"),
+      y = count + 1000  # Adjust position above the bars
+    ),
+    position = position_dodge(width = 0.9),
+    color = "black",
+    size = 3
+  )
+```
 
