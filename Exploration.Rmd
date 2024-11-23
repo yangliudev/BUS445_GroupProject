@@ -18,7 +18,7 @@ library(ranger)
 
 # Exploration of Missing Values
 ```{r}
-set.seed(123)
+set.seed(245)
 data=read.csv("hotel_bookings.csv")
 originalData=data
 #Checking for missing values (NA). Observed 4 missing values in the children column.
@@ -262,14 +262,39 @@ tree_Imp#Important vars are deposit type, agent, market segment, total of specia
 
 
 # Logistic Regression
-```{r}
-lg=train(is_canceled~.,data=data_train,trControl=trainControl(method="none"),method="multinom",trace=FALSE)
 
+#lg=train(is_canceled~.,data=data_train,trControl=trainControl(method="none"),method="glm")
+```{r}
+predictors=names(data_train)[-2]
+predictors
 ```
 
-Accuracy
+
+
+
 ```{r}
-lgPreds=predict(lg,newdata=data_test)
+
+lg=glm(is_canceled~.,data=data_train,family=binomial)
+```
+
+```{r}
+data
+```
+
+
+
+
+```{r}
+table(data$is_canceled)
+```
+
+
+Accuracy
+
+
+
+
+```{r}
 (lgAccuracy=mean(lgPreds==data_test$is_canceled))
 lgse=sqrt(lgAccuracy*(1 - lgAccuracy)/n)
 lgLowerbound=lgAccuracy-z*lgse
@@ -279,6 +304,10 @@ Confusion Matrix
 ```{r}
 table(lgPreds,data_test$is_canceled)
 ```
+```{r}
+lg=glm(is_canceled~.,data=data_train)
+```
+
 
 Variable Importance
 ```{r}
@@ -287,6 +316,10 @@ Top5lgImportance=lgImportance$importance%>%as.data.frame()%>%rownames_to_column(
 Top5lgImportance
 #Found Deposit type:Agent 252, Company 321, Agent 341, Agent 276, Company 204 important
 ```
+```{r}
+summary(lg)
+```
+
 
 Variable Importance Plot
 ```{r}
